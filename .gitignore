@@ -13,3 +13,25 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Android Studio
+
+build/
+.idea/
+*.keystore
+
+# Kotlin
+.kotlin/
+
+# 编译输出
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# 日志文件
+*.log
+
+# 其他
+Thumbs.db
+captures/
