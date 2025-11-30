@@ -26,7 +26,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!--自定义View区域 -->
-    <com.sour.photoeditor.CustomView
+    <com.sour.photoeditorapp.CustomView
         android:id="@+id/customView"
         android:layout_width="0dp"
         android:layout_height="280dp"

@@ -1,4 +1,4 @@
-package com.sour.photoeditor
+package com.sour.photoeditorapp
 
 import android.animation.ValueAnimator
 import android.content.Context
