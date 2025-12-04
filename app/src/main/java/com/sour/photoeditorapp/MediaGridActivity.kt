@@ -8,6 +8,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MediaGridActivity : AppCompatActivity() {
 
@@ -36,24 +40,44 @@ class MediaGridActivity : AppCompatActivity() {
 
     private fun loadMedia() {
         val mediaType = intent.getStringExtra("mediaType")
-        val mediaList = when (mediaType) {
-            "image" -> {
-                toolbar.title = "选择图片"
-                MediaLoader.loadImages(this)
-            }
-            "video" -> {
-                toolbar.title = "选择视频"
-                MediaLoader.loadVideos(this)
-            }
-            else -> emptyList()
-        }
 
-        val adapter = MediaAdapter(mediaList) { mediaItem ->
-            // 处理媒体项点击，跳转到编辑界面
-            navigateToEditor(mediaItem)
-        }
+        // 使用协程加载媒体文件
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val mediaList = when (mediaType) {
+                    "image" -> {
+                        toolbar.title = "选择图片"
+                        withContext(Dispatchers.IO) {
+                            MediaLoader.loadImages(this@MediaGridActivity)
+                        }
+                    }
+                    "video" -> {
+                        toolbar.title = "选择视频"
+                        withContext(Dispatchers.IO) {
+                            MediaLoader.loadVideos(this@MediaGridActivity)
+                        }
+                    }
+                    else -> emptyList()
+                }
 
-        recyclerView.adapter = adapter
+                val adapter = MediaAdapter(mediaList) { mediaItem ->
+                    // 处理媒体项点击，跳转到编辑界面
+                    navigateToEditor(mediaItem)
+                }
+
+                recyclerView.adapter = adapter
+
+                // 显示加载结果
+                if (mediaList.isEmpty()) {
+                    toolbar.subtitle = "未找到媒体文件"
+                } else {
+                    toolbar.subtitle = "找到 ${mediaList.size} 个文件"
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                toolbar.subtitle = "加载失败: ${e.message}"
+            }
+        }
     }
 
     private fun navigateToEditor(mediaItem: MediaItem) {

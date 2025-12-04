@@ -7,4 +7,5 @@
     <color name="button_normal2">#D8BFD8</color>
     <color name="button_pressed2">#E6E6FA</color>
     <color name="title">#FFF5EE</color>
+    <color name="dark">#EED2EE</color>
 </resources>

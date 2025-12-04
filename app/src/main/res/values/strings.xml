@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">PhotoEditorApp</string>
+    <string name="image_editor_content_desc">图片编辑界面</string>
+    <string name="edited_image_content_desc">正在编辑的图片</string>
+    <string name="loading_content_desc">正在加载图片</string>
+    <string name="editor_tools_content_desc">图片编辑工具栏</string>
+    <string name="editor_tools_description">图片编辑工具栏，包含缩放、裁剪、旋转、亮度调整、对比度调整、滤镜应用、撤销和重置功能</string>
 </resources>
