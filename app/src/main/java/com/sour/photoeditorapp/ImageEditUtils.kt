@@ -13,13 +13,6 @@ object ImageEditUtils {
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    // 缩放图片
-    fun scaleBitmap(bitmap: Bitmap, scale: Float): Bitmap {
-        val newWidth = (bitmap.width * scale).toInt()
-        val newHeight = (bitmap.height * scale).toInt()
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-    }
-
     // 裁剪图片（简单居中裁剪）- 修复版本
     fun cropBitmap(bitmap: Bitmap, ratio: Float): Bitmap {
         val bitmapRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
@@ -56,7 +49,8 @@ object ImageEditUtils {
         return if (cropWidth > 0 && cropHeight > 0 &&
             startX + cropWidth <= bitmap.width &&
             startY + cropHeight <= bitmap.height) {
-            Bitmap.createBitmap(bitmap, startX, startY, cropWidth, cropHeight)
+            // 关键修改：使用原图的 Config 来创建新 Bitmap，确保格式稳定
+            Bitmap.createBitmap(bitmap, startX, startY, cropWidth, cropHeight, null, true)
         } else {
             Log.e("ImageEditUtils", "裁剪参数无效，返回原图")
             bitmap
@@ -171,10 +165,5 @@ object ImageEditUtils {
         canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
         return result
-    }
-
-    // 调试方法：显示Bitmap信息
-    fun logBitmapInfo(bitmap: Bitmap, tag: String) {
-        Log.d("ImageEditUtils", "$tag: ${bitmap.width}x${bitmap.height}, config: ${bitmap.config}")
     }
 }

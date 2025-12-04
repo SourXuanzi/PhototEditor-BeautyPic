@@ -70,11 +70,14 @@
         android:padding="8dp"
         android:contentDescription="@string/editor_tools_content_desc">
 
+        <!-- 使用水平LinearLayout，设置按钮为固定宽度，均匀分布 -->
         <LinearLayout
             android:id="@+id/editToolsLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="4dp"
             tools:ignore="MissingSpeakableText">
 
             <!-- 添加一个隐藏的描述性文本，用于无障碍功能 -->

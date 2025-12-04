@@ -64,13 +64,8 @@ dependencies {
     // 1. ExoPlayer - 视频播放
     implementation("com.google.android.exoplayer:exoplayer:2.19.1")
     implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
-//    // 视频剪辑库
-//    implementation("com.googlecode.mp4parser:isoparser:1.1.22")
-//    // 视频滤镜库
-//    implementation("jp.co.cyberagent.android:gpuimage:2.1.0")
-//    // 视频转码/处理库
-//    implementation("com.otaliastudios:transcoder:0.10.5")
-//    // 权限处理
-//    implementation("com.guolindev.permissionx:permissionx:1.7.1")
+
+    implementation("com.google.android.exoplayer:exoplayer:2.19.1")
+    implementation("com.google.android.exoplayer:exoplayer-ui:2.19.1")
 
 }

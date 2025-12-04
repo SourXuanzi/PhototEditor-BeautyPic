@@ -9,8 +9,6 @@ import android.util.Log
 import android.view.View
 import android.widget.*
 import android.content.ContentValues
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -35,6 +33,9 @@ class ImageEditorActivity : AppCompatActivity() {
     // 编辑操作记录
     private val editHistory = mutableListOf<Bitmap>()
     private var currentEditIndex = -1
+
+    // 用于跟踪对话框状态，防止多次显示
+    private var isDialogShowing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -111,11 +112,10 @@ class ImageEditorActivity : AppCompatActivity() {
 
                         originalBitmap = bitmap
                         currentBitmap = bitmap
+
+                        // 设置图片到GLSurfaceView
                         glSurfaceView.setImageBitmap(bitmap)
                         saveToHistory(bitmap)
-
-                        // 测试编辑功能
-                        testEditFunction()
                     } else {
                         Toast.makeText(this@ImageEditorActivity, "图片加载失败", Toast.LENGTH_SHORT).show()
                         finish()
@@ -132,55 +132,51 @@ class ImageEditorActivity : AppCompatActivity() {
     }
 
     private fun setupEditTools() {
+        // 移除缩放功能，只保留其他功能
         val tools = listOf(
             EditTool("旋转", android.R.drawable.ic_menu_rotate) { applyRotate() },
-            EditTool("缩放", android.R.drawable.ic_menu_zoom) { showScaleDialog() },
             EditTool("裁剪", android.R.drawable.ic_menu_crop) { showCropDialog() },
             EditTool("亮度", android.R.drawable.ic_menu_edit) { showBrightnessDialog() },
             EditTool("对比度", android.R.drawable.ic_menu_agenda) { showContrastDialog() },
             EditTool("滤镜", android.R.drawable.ic_menu_gallery) { showFilterDialog() },
             EditTool("撤销", android.R.drawable.ic_menu_revert) { undoEdit() }
-            // 移除了重置按钮
         )
+
+        // 计算按钮宽度：每个按钮占屏幕宽度的1/5.5，留出间距
+        val displayMetrics = resources.displayMetrics
+        val screenWidth = displayMetrics.widthPixels
+        val buttonWidth = (screenWidth / 5.5).toInt() // 设置为屏幕宽度的1/5.5，留出间距
 
         tools.forEach { tool ->
             val button = Button(this).apply {
                 text = tool.name
                 setCompoundDrawablesWithIntrinsicBounds(0, tool.iconRes, 0, 0)
                 setOnClickListener { tool.action.invoke() }
+
+                // 设置按钮宽度和布局参数
+                layoutParams = LinearLayout.LayoutParams(
+                    buttonWidth,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(4, 8, 4, 8) // 设置按钮间距
+                }
+
+                // 保持原来的样式，只调整内边距和文本处理
                 setPadding(32, 16, 32, 16)
                 setBackgroundColor(ContextCompat.getColor(this@ImageEditorActivity, android.R.color.white))
                 setTextColor(ContextCompat.getColor(this@ImageEditorActivity, android.R.color.black))
+
+                // 设置文本单行显示，省略号结尾
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
             }
             editToolsLayout.addView(button)
         }
-
-        // 添加调试按钮（仅用于调试）
-        val debugButton = Button(this).apply {
-            text = "调试"
-            setOnClickListener {
-                showDebugInfo()
-            }
-            setPadding(32, 16, 32, 16)
-            setBackgroundColor(ContextCompat.getColor(this@ImageEditorActivity, android.R.color.holo_green_light))
-            setTextColor(ContextCompat.getColor(this@ImageEditorActivity, android.R.color.black))
-        }
-        editToolsLayout.addView(debugButton)
-    }
-
-    private fun showDebugInfo() {
-        Log.d("ImageEditor", "=== 调试信息 ===")
-        Log.d("ImageEditor", "原图: ${originalBitmap?.width}x${originalBitmap?.height}")
-        Log.d("ImageEditor", "当前图: ${currentBitmap?.width}x${currentBitmap?.height}")
-        Log.d("ImageEditor", "历史记录: ${editHistory.size} 条")
-        Log.d("ImageEditor", "当前索引: $currentEditIndex")
-
-        Toast.makeText(this, "调试信息已输出到日志", Toast.LENGTH_SHORT).show()
     }
 
     data class EditTool(val name: String, val iconRes: Int, val action: () -> Unit)
 
-    // 编辑功能实现
+    // 编辑功能实现 - 移除所有与缩放相关的方法
     private fun applyRotate() {
         val currentBmp = currentBitmap ?: return
         Log.d("ImageEditor", "应用旋转")
@@ -188,38 +184,13 @@ class ImageEditorActivity : AppCompatActivity() {
         applyBitmapEdit(rotatedBitmap, "旋转")
     }
 
-    private fun showScaleDialog() {
-        val scales = arrayOf("缩小 50%", "缩小 25%", "原大小", "放大 25%", "放大 50%", "放大 100%")
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("选择缩放比例")
-            .setItems(scales) { dialog, which ->
-                val scale = when (which) {
-                    0 -> 0.5f
-                    1 -> 0.75f
-                    2 -> 1.0f
-                    3 -> 1.25f
-                    4 -> 1.5f
-                    5 -> 2.0f
-                    else -> 1.0f
-                }
-                applyScale(scale)
-                dialog.dismiss()
-            }
-            .show()
-    }
-
-    private fun applyScale(scale: Float) {
-        val currentBmp = currentBitmap ?: return
-        Log.d("ImageEditor", "应用缩放: $scale")
-        val scaledBitmap = ImageEditUtils.scaleBitmap(currentBmp, scale)
-        applyBitmapEdit(scaledBitmap, "缩放")
-    }
-
     private fun showCropDialog() {
+        if (isDialogShowing) return
+        isDialogShowing = true
+
         val ratios = arrayOf("1:1 (正方形)", "3:4 (竖图)", "4:3 (横图)", "9:16 (手机)", "16:9 (宽屏)")
 
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("选择裁剪比例")
             .setItems(ratios) { dialog, which ->
                 val ratio = when (which) {
@@ -232,18 +203,50 @@ class ImageEditorActivity : AppCompatActivity() {
                 }
                 applyCrop(ratio)
                 dialog.dismiss()
+                isDialogShowing = false
+            }
+            .setOnDismissListener {
+                isDialogShowing = false
             }
             .show()
     }
 
     private fun applyCrop(ratio: Float) {
-        val currentBmp = currentBitmap ?: return
-        Log.d("ImageEditor", "应用裁剪: 比例 $ratio")
-        val croppedBitmap = ImageEditUtils.cropBitmap(currentBmp, ratio)
-        applyBitmapEdit(croppedBitmap, "裁剪")
+        val currentBmp = currentBitmap ?: run {
+            Log.e("ImageEditor", "applyCrop: currentBitmap is null!")
+            Toast.makeText(this, "当前图片不可用", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        Log.d("ImageEditor", "开始应用裁剪: 比例 $ratio, 原图尺寸 ${currentBmp.width}x${currentBmp.height}")
+
+        try {
+            // 记录裁剪前的内存状态（可选）
+            val croppedBitmap = ImageEditUtils.cropBitmap(currentBmp, ratio)
+
+            if (croppedBitmap == currentBmp) {
+                Log.w("ImageEditor", "裁剪返回了原图，可能参数无效")
+                Toast.makeText(this, "裁剪比例与图片相同或无效", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            Log.d("ImageEditor", "裁剪成功，新尺寸: ${croppedBitmap.width}x${croppedBitmap.height}")
+            applyBitmapEdit(croppedBitmap, "裁剪")
+
+        } catch (e: Exception) {
+            Log.e("ImageEditor", "裁剪过程中发生异常: ${e.message}", e)
+            e.printStackTrace()
+            Toast.makeText(this, "裁剪失败: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+
+            // 确保出错时视图显示正常的图片
+            glSurfaceView.setImageBitmap(currentBmp)
+        }
     }
 
     private fun showBrightnessDialog() {
+        if (isDialogShowing) return
+        isDialogShowing = true
+
         val currentBmp = currentBitmap ?: return
 
         // 使用变量保存当前调整值
@@ -265,18 +268,26 @@ class ImageEditorActivity : AppCompatActivity() {
                 val adjustedBitmap = ImageEditUtils.adjustBrightness(currentBmp, currentAdjustment)
                 applyBitmapEdit(adjustedBitmap, "亮度调整")
                 dialog.dismiss()
+                isDialogShowing = false
             }
             .setNegativeButton("取消") { dialog, _ ->
                 // 恢复原图
                 Log.d("ImageEditor", "取消亮度调整")
                 glSurfaceView.setImageBitmap(currentBmp)
                 dialog.dismiss()
+                isDialogShowing = false
+            }
+            .setOnDismissListener {
+                isDialogShowing = false
             }
             .create()
         dialog.show()
     }
 
     private fun showContrastDialog() {
+        if (isDialogShowing) return
+        isDialogShowing = true
+
         val currentBmp = currentBitmap ?: return
 
         // 使用变量保存当前调整值
@@ -298,58 +309,66 @@ class ImageEditorActivity : AppCompatActivity() {
                 val adjustedBitmap = ImageEditUtils.adjustContrast(currentBmp, currentAdjustment)
                 applyBitmapEdit(adjustedBitmap, "对比度调整")
                 dialog.dismiss()
+                isDialogShowing = false
             }
             .setNegativeButton("取消") { dialog, _ ->
                 // 恢复原图
                 Log.d("ImageEditor", "取消对比度调整")
                 glSurfaceView.setImageBitmap(currentBmp)
                 dialog.dismiss()
+                isDialogShowing = false
+            }
+            .setOnDismissListener {
+                isDialogShowing = false
             }
             .create()
         dialog.show()
     }
 
     private fun showFilterDialog() {
+        if (isDialogShowing) return
+        isDialogShowing = true
+
         val filters = arrayOf("无滤镜", "黑白", "复古", "冷色调")
 
-        androidx.appcompat.app.AlertDialog.Builder(this)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("选择滤镜")
             .setItems(filters) { dialog, which ->
                 applyFilter(which)
                 dialog.dismiss()
+                isDialogShowing = false
+            }
+            .setOnDismissListener {
+                isDialogShowing = false
             }
             .show()
     }
 
     private fun applyFilter(filterIndex: Int) {
         val currentBmp = currentBitmap ?: return
-        val filteredBitmap = when (filterIndex) {
+
+        when (filterIndex) {
+            0 -> {
+                // 无滤镜 - 使用当前图片（不做处理）
+                Log.d("ImageEditor", "移除滤镜")
+                Toast.makeText(this, "已移除滤镜", Toast.LENGTH_SHORT).show()
+            }
             1 -> {
                 Log.d("ImageEditor", "应用黑白滤镜")
-                ImageEditUtils.applyGrayscale(currentBmp)
+                val filteredBitmap = ImageEditUtils.applyGrayscale(currentBmp)
+                applyBitmapEdit(filteredBitmap, "黑白滤镜")
             }
             2 -> {
                 Log.d("ImageEditor", "应用复古滤镜")
-                ImageEditUtils.applyVintage(currentBmp)
+                val filteredBitmap = ImageEditUtils.applyVintage(currentBmp)
+                applyBitmapEdit(filteredBitmap, "复古滤镜")
             }
             3 -> {
                 Log.d("ImageEditor", "应用冷色调滤镜")
-                ImageEditUtils.applyCoolTone(currentBmp)
-            }
-            else -> {
-                Log.d("ImageEditor", "移除滤镜")
-                currentBmp
+                val filteredBitmap = ImageEditUtils.applyCoolTone(currentBmp)
+                applyBitmapEdit(filteredBitmap, "冷色调滤镜")
             }
         }
-
-        val filterName = when (filterIndex) {
-            1 -> "黑白滤镜"
-            2 -> "复古滤镜"
-            3 -> "冷色调滤镜"
-            else -> "移除滤镜"
-        }
-
-        applyBitmapEdit(filteredBitmap, filterName)
     }
 
     private fun createSeekBarLayout(
@@ -395,29 +414,45 @@ class ImageEditorActivity : AppCompatActivity() {
         Log.d("ImageEditor", "操作: $operation")
         Log.d("ImageEditor", "原图: ${currentBitmap?.width}x${currentBitmap?.height}")
         Log.d("ImageEditor", "新图: ${newBitmap.width}x${newBitmap.height}")
-        Log.d("ImageEditor", "是否相同: ${currentBitmap == newBitmap}")
 
-        // 回收旧bitmap
-        currentBitmap?.recycle()
+        // **关键修改：先保存旧Bitmap的引用**
+        val oldBitmap = currentBitmap
+
+        // 1. 更新当前Bitmap引用
         currentBitmap = newBitmap
 
+        // 2. 设置新图到GLSurfaceView (触发OpenGL渲染)
         Log.d("ImageEditor", "设置到GLSurfaceView")
         glSurfaceView.setImageBitmap(newBitmap)
 
+        // 3. 在设置完成后，再安全地回收旧Bitmap
+        // 确保不是在回收刚传入的新Bitmap
+        if (oldBitmap != null && oldBitmap != newBitmap && !oldBitmap.isRecycled) {
+            Log.d("ImageEditor", "安全回收旧Bitmap")
+            oldBitmap.recycle()
+        }
+
+        // 4. 保存历史记录
         saveToHistory(newBitmap)
         Toast.makeText(this, "已$operation", Toast.LENGTH_SHORT).show()
-
-        // 强制重绘
-        glSurfaceView.requestRender()
-        glSurfaceView.invalidate()
     }
 
     private fun undoEdit() {
         if (currentEditIndex > 0) {
             currentEditIndex--
             val previousBitmap = editHistory[currentEditIndex]
+
+            // 回收当前图片
+            val oldBitmap = currentBitmap
             currentBitmap = previousBitmap
+
             glSurfaceView.setImageBitmap(previousBitmap)
+
+            // 安全回收旧Bitmap
+            if (oldBitmap != null && oldBitmap != previousBitmap && !oldBitmap.isRecycled) {
+                oldBitmap.recycle()
+            }
+
             Toast.makeText(this, "已撤销", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(this, "无法撤销", Toast.LENGTH_SHORT).show()
@@ -427,7 +462,9 @@ class ImageEditorActivity : AppCompatActivity() {
     private fun saveToHistory(bitmap: Bitmap) {
         if (editHistory.size >= 10) {
             val removed = editHistory.removeAt(0)
-            removed.recycle()
+            if (!removed.isRecycled) {
+                removed.recycle()
+            }
             currentEditIndex--
         }
 
@@ -512,30 +549,6 @@ class ImageEditorActivity : AppCompatActivity() {
         return null
     }
 
-    // 测试编辑功能
-    private fun testEditFunction() {
-        currentBitmap?.let { bitmap ->
-            Log.d("ImageEditor", "=== 开始测试编辑功能 ===")
-
-            // 测试旋转
-            val rotated = ImageEditUtils.rotateBitmap(bitmap, 45f)
-            Log.d("ImageEditor", "旋转测试: ${rotated.width}x${rotated.height}")
-            rotated.recycle()
-
-            // 测试亮度
-            val brightened = ImageEditUtils.adjustBrightness(bitmap, 0.5f)
-            Log.d("ImageEditor", "亮度测试: ${brightened.width}x${brightened.height}")
-            brightened.recycle()
-
-            // 测试对比度
-            val contrasted = ImageEditUtils.adjustContrast(bitmap, 1.5f)
-            Log.d("ImageEditor", "对比度测试: ${contrasted.width}x${contrasted.height}")
-            contrasted.recycle()
-
-            Log.d("ImageEditor", "=== 编辑功能测试完成 ===")
-        }
-    }
-
     // 处理返回按钮 - 由于我们使用自定义 Toolbar，这个方法可能不会被调用
     override fun onSupportNavigateUp(): Boolean {
         finish()
@@ -545,10 +558,34 @@ class ImageEditorActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d("ImageEditor", "ImageEditorActivity销毁")
+
+        // **关键修改：按顺序清理，避免OpenGL上下文问题**
+
+        // 1. 先停止GLSurfaceView的渲染
+        glSurfaceView.onPause()
+
+        // 2. 清理OpenGL资源
         glSurfaceView.cleanup()
-        originalBitmap?.recycle()
-        currentBitmap?.recycle()
-        editHistory.forEach { it.recycle() }
+
+        // 3. 最后回收Bitmap（此时OpenGL已停止使用它们）
+        originalBitmap?.let {
+            if (!it.isRecycled) {
+                it.recycle()
+            }
+            originalBitmap = null
+        }
+
+        currentBitmap?.let {
+            // 注意：这里不要回收currentBitmap，因为它可能在editHistory中
+            currentBitmap = null
+        }
+
+        // editHistory的清理保持不变
+        editHistory.forEach { bitmap ->
+            if (!bitmap.isRecycled) {
+                bitmap.recycle()
+            }
+        }
         editHistory.clear()
     }
 }

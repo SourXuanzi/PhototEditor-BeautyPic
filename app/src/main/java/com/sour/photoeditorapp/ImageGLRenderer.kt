@@ -6,6 +6,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import android.util.Log
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -13,11 +14,19 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
 
     private var bitmap: Bitmap? = null
     private var textureId = 0
-    private var textureNeedsUpdate = false // 添加一个标志来跟踪是否需要更新纹理
-    private val projectionMatrix = FloatArray(16)
-    private val viewMatrix = FloatArray(16)
+    private var textureNeedsUpdate = false
+
+    // 使用模型-视图-投影矩阵
     private val modelMatrix = FloatArray(16)
-    private val mvpMatrix = FloatArray(16)
+    private val viewMatrix = FloatArray(16)
+    private val projectionMatrix = FloatArray(16)
+    private final val mvpMatrix = FloatArray(16)
+
+    // 视图和图片尺寸
+    private var viewWidth = 0
+    private var viewHeight = 0
+    private var bitmapWidth = 0
+    private var bitmapHeight = 0
 
     private var programHandle = 0
     private var positionHandle = 0
@@ -25,15 +34,18 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
     private var textureHandle = 0
     private var mvpMatrixHandle = 0
 
-    // 顶点坐标 (x, y, z)
-    private val vertices = floatArrayOf(
+    // 顶点坐标 (x, y, z) - 使用单位正方形
+    private val baseVertices = floatArrayOf(
         -1.0f, -1.0f, 0.0f,  // 左下
         1.0f, -1.0f, 0.0f,   // 右下
         -1.0f, 1.0f, 0.0f,   // 左上
         1.0f, 1.0f, 0.0f     // 右上
     )
 
-    // 纹理坐标 (s, t)
+    // 用于存储调整后的顶点坐标
+    private val vertices = FloatArray(baseVertices.size)
+
+    // 纹理坐标 (s, t) - 保持不变
     private val textureCoords = floatArrayOf(
         0.0f, 1.0f,  // 左下
         1.0f, 1.0f,  // 右下
@@ -42,14 +54,12 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
     )
 
     fun setBitmap(bitmap: Bitmap) {
-        // 清除旧纹理
-        if (textureId != 0) {
-            GLES20.glDeleteTextures(1, intArrayOf(textureId), 0)
-            textureId = 0
-        }
-
         this.bitmap = bitmap
-        textureNeedsUpdate = true // 标记需要更新纹理
+        this.bitmapWidth = bitmap.width
+        this.bitmapHeight = bitmap.height
+        textureNeedsUpdate = true
+
+        Log.d("ImageGLRenderer", "设置图片: ${bitmapWidth}x${bitmapHeight}")
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -60,37 +70,93 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
 
+        // 初始化矩阵
+        Matrix.setIdentityM(modelMatrix, 0)
+        Matrix.setIdentityM(viewMatrix, 0)
+        Matrix.setIdentityM(projectionMatrix, 0)
+        Matrix.setIdentityM(mvpMatrix, 0)
+
         // 编译着色器
         compileShaders()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         GLES20.glViewport(0, 0, width, height)
+        viewWidth = width
+        viewHeight = height
 
-        // 设置投影矩阵
-        val ratio = width.toFloat() / height.toFloat()
-        Matrix.orthoM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, -1f, 1f)
+        Log.d("ImageGLRenderer", "表面改变: ${viewWidth}x${viewHeight}")
+
+        // 设置固定的正交投影矩阵，覆盖整个视图
+        val aspect = width.toFloat() / height.toFloat()
+        Matrix.orthoM(projectionMatrix, 0, -1f, 1f, -1f, 1f, -1f, 1f)
+    }
+
+    private fun updateVertices() {
+        if (viewWidth == 0 || viewHeight == 0 || bitmapWidth == 0 || bitmapHeight == 0) {
+            System.arraycopy(baseVertices, 0, vertices, 0, baseVertices.size)
+            return
+        }
+
+        val viewAspect = viewWidth.toFloat() / viewHeight.toFloat()
+        val imageAspect = bitmapWidth.toFloat() / bitmapHeight.toFloat()
+
+        Log.d("ImageGLRenderer", "更新顶点: 视图比例=$viewAspect, 图片比例=$imageAspect")
+
+        // 计算缩放比例，保持图片完整显示
+        val scaleX: Float
+        val scaleY: Float
+
+        if (imageAspect > viewAspect) {
+            // 图片比视图宽，按宽度适应
+            scaleX = 1.0f
+            scaleY = viewAspect / imageAspect
+            Log.d("ImageGLRenderer", "按宽度适应: scaleY=$scaleY")
+        } else {
+            // 图片比视图高，按高度适应
+            scaleX = imageAspect / viewAspect
+            scaleY = 1.0f
+            Log.d("ImageGLRenderer", "按高度适应: scaleX=$scaleX")
+        }
+
+        // 调整顶点坐标
+        for (i in 0 until 4) {
+            vertices[i * 3] = baseVertices[i * 3] * scaleX     // x
+            vertices[i * 3 + 1] = baseVertices[i * 3 + 1] * scaleY // y
+            vertices[i * 3 + 2] = baseVertices[i * 3 + 2]       // z
+        }
     }
 
     override fun onDrawFrame(gl: GL10?) {
+        // 清除为黑色背景
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         bitmap?.let { bmp ->
             // 如果纹理不存在或者需要更新，重新加载纹理
             if (textureId == 0 || textureNeedsUpdate) {
+                if (textureId != 0) {
+                    GLES20.glDeleteTextures(1, intArrayOf(textureId), 0)
+                }
                 textureId = loadTexture(bmp)
                 textureNeedsUpdate = false
+
+                // 更新顶点坐标
+                updateVertices()
             }
+
+            // 更新顶点坐标（如果视图尺寸改变）
+            updateVertices()
 
             // 绑定纹理
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
             GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
 
-            // 重置视图矩阵
-            Matrix.setIdentityM(viewMatrix, 0)
+            // 重置模型矩阵（不进行额外的变换）
+            Matrix.setIdentityM(modelMatrix, 0)
 
             // 计算 MVP 矩阵
             Matrix.multiplyMM(mvpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
+            Matrix.multiplyMM(mvpMatrix, 0, mvpMatrix, 0, modelMatrix, 0)
 
             // 使用程序
             GLES20.glUseProgram(programHandle)
@@ -98,9 +164,10 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
             // 传递 MVP 矩阵
             GLES20.glUniformMatrix4fv(mvpMatrixHandle, 1, false, mvpMatrix, 0)
 
-            // 传递顶点坐标
+            // 传递顶点坐标（使用调整后的顶点）
+            val vertexBuffer = floatArrayToBuffer(vertices)
             GLES20.glEnableVertexAttribArray(positionHandle)
-            GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, floatArrayToBuffer(vertices))
+            GLES20.glVertexAttribPointer(positionHandle, 3, GLES20.GL_FLOAT, false, 0, vertexBuffer)
 
             // 传递纹理坐标
             GLES20.glEnableVertexAttribArray(textureCoordHandle)
@@ -193,9 +260,13 @@ class ImageGLRenderer(private val context: Context) : GLSurfaceView.Renderer {
     }
 
     fun cleanup() {
+        // 在清除纹理前，确保我们有一个有效的OpenGL上下文
         if (textureId != 0) {
-            GLES20.glDeleteTextures(1, intArrayOf(textureId), 0)
+            // 在Android上，我们需要确保在OpenGL线程中执行删除
+            val texId = textureId
+            GLES20.glDeleteTextures(1, intArrayOf(texId), 0)
             textureId = 0
+            Log.d("ImageGLRenderer", "清理纹理: $texId")
         }
     }
 }
