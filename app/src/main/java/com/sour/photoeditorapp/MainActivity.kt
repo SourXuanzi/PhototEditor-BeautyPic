@@ -126,20 +126,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // 可以添加一个调试按钮或直接调用
-    fun scanAllMedia(view: View) {
-        // 扫描 DCIM/Camera 目录
-        val dcimDir = File("/sdcard/DCIM/Camera")
-        if (dcimDir.exists() && dcimDir.isDirectory) {
-            dcimDir.listFiles()?.forEach { file ->
-                if (file.isFile && (file.name.endsWith(".jpg") ||
-                            file.name.endsWith(".jpeg") ||
-                            file.name.endsWith(".png") ||
-                            file.name.endsWith(".mp4"))) {
-                    scanMediaFile(file.absolutePath)
-                }
-            }
-        }
-        Toast.makeText(this, "正在扫描媒体文件...", Toast.LENGTH_SHORT).show()
-    }
+//    // 可以添加一个调试按钮或直接调用
+//    fun scanAllMedia(view: View) {
+//        // 扫描 DCIM/Camera 目录
+//        val dcimDir = File("/sdcard/DCIM/Camera")
+//        if (dcimDir.exists() && dcimDir.isDirectory) {
+//            dcimDir.listFiles()?.forEach { file ->
+//                if (file.isFile && (file.name.endsWith(".jpg") ||
+//                            file.name.endsWith(".jpeg") ||
+//                            file.name.endsWith(".png") ||
+//                            file.name.endsWith(".mp4"))) {
+//                    scanMediaFile(file.absolutePath)
+//                }
+//            }
+//        }
+//        Toast.makeText(this, "正在扫描媒体文件...", Toast.LENGTH_SHORT).show()
+//    }
 }

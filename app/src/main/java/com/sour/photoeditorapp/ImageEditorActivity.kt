@@ -70,7 +70,7 @@ class ImageEditorActivity : AppCompatActivity() {
 
         // 设置自定义标题
         val fileName = mediaPath?.substringAfterLast("/") ?: "未命名"
-        toolbarTitle.text = "图片编辑 - $fileName"
+        toolbarTitle.text = "图片编辑"
 
         // 设置保存按钮点击事件
         saveButton.setOnClickListener {

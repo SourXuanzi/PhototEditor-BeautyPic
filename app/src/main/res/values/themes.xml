@@ -1,9 +1,10 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.PhotoEditorApp" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    <!-- 完全透明状态栏主题 -->
+    <style name="Theme.PhotoEditorApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- 完全透明状态栏 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowTranslucentStatus">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
-
-    <style name="Theme.PhotoEditorApp" parent="Base.Theme.PhotoEditorApp" />
 </resources>
