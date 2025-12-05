@@ -16,10 +16,11 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="32dp"
         android:layout_marginEnd="16dp"
         android:gravity="center"
         android:text="BeautyPic"
+        android:textColor="@color/black"
         android:textSize="24sp"
         android:textStyle="bold"
 
@@ -78,12 +79,14 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="📷"
+                    android:textColor="@color/black"
                     android:textSize="24sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="导入照片"
+                    android:textColor="@color/black"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
@@ -107,12 +110,14 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="🎬"
+                    android:textColor="@color/black"
                     android:textSize="24sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="修视频"
+                    android:textColor="@color/black"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
@@ -149,12 +154,14 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="🧩"
+                    android:textColor="@color/black"
                     android:textSize="24sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="拼图"
+                    android:textColor="@color/black"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
@@ -178,12 +185,14 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="🎨"
+                    android:textColor="@color/black"
                     android:textSize="24sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="滤镜"
+                    android:textColor="@color/black"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
@@ -207,12 +216,14 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="⭐"
+                    android:textColor="@color/black"
                     android:textSize="24sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="贴纸"
+                    android:textColor="@color/black"
                     android:textSize="12sp"
                     android:layout_marginTop="8dp" />
 
